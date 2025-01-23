@@ -1,0 +1,317 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+      <link href="https://fonts.googleapis.com/css2?family=Cinzel&display=swap" rel="stylesheet">
+  
+    <title>The World History</title>
+    <link rel="stylesheet" href="styles.css">
+    <script src="https://cdn.amcharts.com/lib/4/core.js"></script>
+    <script src="https://cdn.amcharts.com/lib/4/maps.js"></script>
+    <script src="https://cdn.amcharts.com/lib/4/geodata/worldLow.js"></script>
+</head>
+<body>
+  <div class="intro_space">
+    <div class="intro_block">
+      <div class="logo">
+    <i class="fa-solid fa-location-dot"></i>
+
+      </div>
+      <div class="intro_dis">
+        Explore the World
+      </div>
+    </div>
+  </div>
+    <div id="chartdiv"></div>
+    <div class="datacontent">
+      <div class="clickondata1">
+        <div class="alldata">
+          <div class="Head">
+            <div class="navbar">
+            <button  id="closebtn" onclick="deldatapage()">
+           <i class="fa-solid fa-xmark"></i>
+              </button>
+            </div>
+            <div class="clickname">
+              </div>
+          </div>
+          <div class="datasection">
+              <div class="slides">
+                <a class="tool" onclick="slidebar(0)" href="#">Basic Info</a>
+                <a class="tool" onclick="slidebar(1)" href="#">Depth Info</a>
+                <!-- <a class="tool" onclick="slidebar(2)" href="#">Discription</a> -->
+              </div>
+              <div class="data">
+                 <div class="BasicInfo">
+                   <div class="flag">
+                     <div class="flagimg">
+                       <img class="imgmap" src="" alt="flag">
+                     </div>
+                   </div>
+                   <div class="box officialname">
+                    <p class="infor1">Official_Name<p class="dot">:</p></p>
+                    <p class="infor2">Republic of India</p>
+                   </div>
+                   <div class="box independence">
+                     <p class="infor1">
+                       Independence<p class="dot">:</p>
+                     </p>
+                     <p class="infor2">
+                      @ Flase
+                     </p>
+                   </div>
+                   <div class="box Status">
+                     <p class="infor1">
+                       Status<p class="dot">:</p>
+                     </p>
+                     <p class="infor2">
+                       @Officially Assisgned
+                     </p>
+                   </div>
+                   <div class="box Altspelling">
+                     <p class="infor1">
+                       Allternate_Spellings<p class="dot">:</p>
+                     </p>
+                     <p class="infor2">
+                         
+                     </p>
+                   </div>
+                   <div class="box Capital">
+                     <p class="infor1">
+                       Capital<p class="dot">:</p>
+                     </p>
+                     <p class="infor2">
+                         
+                     </p>
+                   </div>
+                   <div class="box Region">
+                     <p class="infor1">
+                       Region<p class="dot">:</p>
+                     </p>
+                     <p class="infor2">
+                         @Asia
+                     </p>
+                   </div>
+                   <div class="box Sub_Region">
+                     <p class="infor1">
+                       Sub_Region<p class="dot">:</p>
+                     </p>
+                     <p class="infor2">
+
+                     </p>
+                   </div>
+                   <div class="box languages">
+                     <p class="infor1">
+                       Languages<p class="dot">:</p>
+                     </p>
+                     <p class="infor2">
+                         
+                     </p>
+                   </div>
+                   
+                   <div class="box Currency">
+                     <p class="infor1">
+                       Currency<p class="dot">:</p>
+                     </p>
+                     <p class="infor2">
+                         
+                     </p>
+                   </div>
+                   <div class="box Symbol">
+                     <p class="infor1">
+                       Symbol<p class="dot">:</p>
+                     </p>
+                     <p class="infor2">
+
+                     </p>
+                   </div>
+                   <div class="box Timezone">
+                     <p class="infor1">
+                       Timezone<p class="dot">:</p>
+                     </p>
+                     <p class="infor2">
+                         
+                     </p>
+                   </div>
+                   <div class="box GMaps">
+                     <p class="infor1">
+                       Google_Maps<p class="dot">:</p>
+                     </p>
+                     <p class="infor2">
+                        <a href="https://goo.gl/maps/WSk3fLwG4vtPQetp7"
+                        >Google Maps</a>
+                     </p>
+                   </div>
+                   <div class="box Latlng">
+                     <p class="infor1">
+                       LatLng<p class="dot">:</p>
+                     </p>
+                     <p class="infor2">
+                         
+                     </p>
+                   </div>
+                   <div class="box Demonyms1">
+                     <p class="infor1">
+                       Demonyms_Eng<p class="dot">:</p>
+                     </p>
+                     <p class="infor2">
+
+                     </p>
+                   </div>
+                   <div class="box Demonyms2">
+                     <p class="infor1">
+                       Demonyms_Fra<p class="dot">:</p>
+                     </p>
+                     <p class="infor2">
+                        
+                     </p>
+                   </div>
+                 </div>
+                 <div class="History">
+                   <div class="coatarms">
+                     <div class="coatofarms">
+                       <img class="armsimg" src="" alt="flag">
+                     </div>
+                   </div>
+                   <div class="box1 IDD_ROOT">
+                    <p class="deepinfo1">IDD_ROOT<p class="dot">:</p></p>
+                    <p class="deepinfo2">+9</p>
+                   </div>
+                   <div class="box1 IDD_SUFIXES">
+                     <p class="deepinfo1">
+                       IDD_SUFIXES<p class="dot">:</p>
+                     </p>
+                     <p class="deepinfo2">
+                       '1'
+                     </p>
+                   </div>
+                   <div class="box1 Area">
+                     <p class="deepinfo1">
+                       Area<p class="dot">:</p>
+                     </p>
+                     <p class="deepinfo2">
+                       3000000
+                     </p>
+                   </div>
+                   <div class="box1 Population">
+                     <p class="deepinfo1">
+                       Population<p class="dot">:</p>
+                     </p>
+                     <p class="deepinfo2">
+                         133048489300
+                     </p>
+                   </div>
+                   <div class="box1 TLD">
+                     <p class="deepinfo1">
+                       TLD<p class="dot">:</p>
+                     </p>
+                     <p class="deepinfo2">
+                         '.in'
+                     </p>
+                   </div>
+                   
+                   <div class="box1 LandLocked">
+                     <p class="deepinfo1">
+                       LandLocked<p class="dot">:</p>
+                     </p>
+                     <p class="deepinfo2">
+                         False
+                     </p>
+                   </div>
+                   <div class="box1 WeekStart">
+                     <p class="deepinfo1">
+                       Start_Of_Week<p class="dot">:</p>
+                     </p>
+                     <p class="deepinfo2">
+                         Monday
+                     </p>
+                   </div>
+                  
+                   <div class="box1 Border_Region">
+                     <p class="deepinfo1">
+                       Border_Countries<p class="dot">:</p>
+                     </p>
+                     <p class="deepinfo2">
+                         Bangladesh<br>
+                         Nepal<br>
+                         Pakisthan<br>
+                         Maynmar
+                     </p>
+                   </div>
+                   
+                   <div class="box1 Cca2">
+                     <p class="deepinfo1">
+                       cca2<p class="dot">:</p>
+                     </p>
+                     <p class="deepinfo2">
+                        IN
+                     </p>
+                   </div>
+                   <div class="box1 ccn3">
+                     <p class="deepinfo1">
+                       ccn3<p class="dot">:</p>
+                     </p>
+                     <p class="deepinfo2">
+                       356 
+                     </p>
+                   </div>
+                   <div class="box1 cca3">
+                     <p class="deepinfo1">
+                       cca3<p class="dot">:</p>
+                     </p>
+                     <p class="deepinfo2">
+                       IND 
+                     </p>
+                   </div>
+                   <div class="box1 cioc">
+                     <p class="deepinfo1">
+                       cioc<p class="dot">:</p>
+                     </p>
+                     <p class="deepinfo2">
+                      IND   
+                     </p>
+                   </div>
+                   <div class="box1 Car_Signs">
+                     <p class="deepinfo1">
+                       Car_Signs<p class="dot">:</p>
+                     </p>
+                     <p class="deepinfo2">
+                        IND
+                     </p>
+                   </div>
+                    <div class="box1 CapitalInfo">
+                     <p class="deepinfo1">
+                       Capital_LatLng<p class="dot">:</p>
+                     </p>
+                     <p class="deepinfo2">
+                         '22.8,70.5'
+                     </p>
+                   </div>
+                   <div class="box1 Post_info1">
+                     <p class="deepinfo1">
+                       PostalCode_Format<p class="dot">:</p>
+                     </p>
+                     <p class="deepinfo2">
+                        #####
+                     </p>
+                   </div>
+                   <div class="box1 Postal_Info2">
+                     <p class="deepinfo1">
+                       PostalCode_Regex<p class="dot">:</p>
+                     </p>
+                     <p class="deepinfo2">
+                         ^(\d{6})$
+                     </p>
+                   </div>
+                 </div>
+              </div>
+          </div>
+        </div>
+    </div>
+    </div>
+    <script src="script.js"></script>
+</body>
+</html>
