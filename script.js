@@ -43,43 +43,49 @@ let armsimg = document.querySelector(".armsimg");
 let infor2 = document.querySelectorAll(".infor2");
 //console.log(infor2);
 let deepinfo2 = document.querySelectorAll(".deepinfo2");
+let fallbackCountriesPromise;
+let coatOfArmsCache = new Map();
 
 async function fetchCountryData(countryName) {
   let encodedName = encodeURIComponent(countryName);
   let restUrl = `https://restcountries.com/v3.1/name/${encodedName}`;
-  let endpoints = [
-    restUrl,
-    `https://api.allorigins.win/raw?url=${encodeURIComponent(restUrl)}`,
-    "https://raw.githubusercontent.com/mledoze/countries/master/countries.json"
-  ];
-
-  for (let endpoint of endpoints) {
-    try {
-      let response = await fetch(endpoint);
-      if (!response.ok) {
-        throw new Error(`Request failed with status ${response.status}`);
-      }
+  try {
+    let controller = new AbortController();
+    let timeout = setTimeout(() => controller.abort(), 3000);
+    let response = await fetch(restUrl, { signal: controller.signal });
+    clearTimeout(timeout);
+    if (response.ok) {
       let data = await response.json();
-      if (endpoint.includes("countries.json")) {
-        let normalizedName = countryName.toLowerCase();
-        data = data.filter(country => {
-          let names = [country.name?.common, country.name?.official];
-          return names.some(name => name?.toLowerCase() === normalizedName);
-        });
-        if (data[0]) {
-          let countryCode = data[0].cca2?.toLowerCase();
-          data[0].flags = countryCode ? {
-            png: `https://flagcdn.com/w320/${countryCode}.png`
-          } : null;
-        }
-      }
       if (Array.isArray(data) && data.length > 0) {
         return data;
       }
     }
-    catch (error) {
-      console.warn(`Country data source failed: ${endpoint}`, error);
-    }
+  }
+  catch (error) {
+    console.warn(`Country data source failed: ${restUrl}`, error);
+  }
+
+  if (!fallbackCountriesPromise) {
+    fallbackCountriesPromise = fetch("https://raw.githubusercontent.com/mledoze/countries/master/countries.json")
+      .then(response => {
+        if (!response.ok) {
+          throw new Error(`Fallback request failed with status ${response.status}`);
+        }
+        return response.json();
+      });
+  }
+  let allCountries = await fallbackCountriesPromise;
+  let normalizedName = countryName.toLowerCase();
+  let country = allCountries.find(country => {
+    let names = [country.name?.common, country.name?.official];
+    return names.some(name => name?.toLowerCase() === normalizedName);
+  });
+  if (country) {
+    let countryCode = country.cca2?.toLowerCase();
+    country.flags = countryCode ? {
+      png: `https://flagcdn.com/w320/${countryCode}.png`
+    } : null;
+    return [country];
   }
   throw new Error(`No country data is available for ${countryName}`);
 }
@@ -95,6 +101,9 @@ function setImageSources(image, sources) {
 }
 
 async function fetchCoatOfArms(countryName) {
+  if (coatOfArmsCache.has(countryName)) {
+    return coatOfArmsCache.get(countryName);
+  }
   let search = encodeURIComponent(`coat of arms of ${countryName}`);
   let url = `https://commons.wikimedia.org/w/api.php?action=query&format=json&origin=*&generator=search&gsrsearch=${search}&gsrnamespace=6&gsrlimit=1&prop=imageinfo&iiprop=url`;
   try {
@@ -104,7 +113,9 @@ async function fetchCoatOfArms(countryName) {
     }
     let data = await response.json();
     let page = Object.values(data.query?.pages || {})[0];
-    return page?.imageinfo?.[0]?.url || "";
+    let imageUrl = page?.imageinfo?.[0]?.url || "";
+    coatOfArmsCache.set(countryName, imageUrl);
+    return imageUrl;
   }
   catch (error) {
     console.warn(`Coat of arms source failed for ${countryName}`, error);
@@ -186,11 +197,11 @@ am4core.ready(function () {
         let flag = data[0].flags;
         setImageSources(flagimg, [flag?.svg, flag?.png]);
         let arms = data[0].coatOfArms;
-        let coatOfArmsUrl = arms?.svg || arms?.png || await fetchCoatOfArms(clickedCountry);
+        let coatOfArmsUrl = arms?.svg || arms?.png;
         let basicdata = [];
         let histodata = [];
         console.log(data);
-        basicdata.push(data[0].name.official)
+        basicdata.push(data[0].name?.official || data[0].name?.common || clickedCountry)
         let checkarr = ["independent", "status", "altSpellings", "capital", "region", "subregion", "languages", "currencies", "timezones", "maps", "latlng", "demonyms"];
         for (let i = 0; i < checkarr.length; i++) {
           let j = 0;
@@ -289,20 +300,8 @@ am4core.ready(function () {
         }
         historyload();
         function historyload() {
-          if (data[0].idd) {
-            histodata.push(data[0].idd.root);
-          }
-          else {
-            histodata.push("none");
-          }
-          if (data[0].idd.suffixes) {
-
-            histodata.push(data[0].idd.suffixes);
-          }
-          else {
-
-            histodata.push("none");
-          }
+          histodata.push(data[0].idd?.root || "Not available");
+          histodata.push(data[0].idd?.suffixes || "Not available");
           // let checkarr=["area","population","tld","landlocked","startOfWeek","borders","cca2","ccn3","cca3","cioc"];
           // for(let i=0;i<checkarr.length;i++){
           //   if(data[0][checkarr[i]]){
@@ -318,31 +317,13 @@ am4core.ready(function () {
             if (data[0][checkarr[i]] !== undefined && data[0][checkarr[i]] !== null) {
               histodata.push(data[0][checkarr[i]]);
             } else {
-              histodata.push("none");
+              histodata.push("Not available");
             }
           }
-          if (data[0].car?.signs) {
-            histodata.push(data[0].car.signs);
-          }
-          else {
-            histodata.push("none");
-            console.log("push")
-          }
-          if (data[0].capitalInfo?.latlng) {
-            histodata.push(data[0].capitalInfo.latlng);
-          }
-          else {
-            histodata.push("none");
-          }
-          if (data[0].postalCode && data[0].postalCode.format) {
-            histodata.push(data[0].postalCode.format);
-            histodata.push(data[0].postalCode.regex);
-          }
-          else {
-            histodata.push("none");
-            histodata.push("none");
-          }
-          console.log(histodata);
+          histodata.push(data[0].car?.signs || "Not available");
+          histodata.push(data[0].capitalInfo?.latlng || "Not available");
+          histodata.push(data[0].postalCode?.format || "Not available");
+          histodata.push(data[0].postalCode?.regex || "Not available");
           //   function getd(){
           // histodata.push(data[0].idd.root);
           // histodata.push(data[0].idd.suffixes);
@@ -377,14 +358,14 @@ am4core.ready(function () {
             if (Array.isArray(histodata[i])) {
               for (let j = 0; j < histodata[i].length; j++) {
                 // infor2[i].innerText+= basicdata[i][j];
-                let textNode = document.createTextNode(histodata[i][j]);
+                let textNode = document.createTextNode(String(histodata[i][j]));
                 deepinfo2[i].appendChild(textNode);
                 let lineBreak = document.createElement('br'); // Create a line break
                 deepinfo2[i].appendChild(lineBreak); // Append the line break to the container
               }
             }
             else {
-              deepinfo2[i].innerText = histodata[i];
+              deepinfo2[i].innerText = String(histodata[i] ?? "Not available");
               //console.log(infor2[i].innerText)
               //console.log(basicdata[i2]);
             }
@@ -411,11 +392,9 @@ am4core.ready(function () {
         // basicdata.push(Object.values(demony[1]));
         // console.log(basicdata);
         // }
-          if (coatOfArmsUrl) {
-            setImageSources(armsimg, [coatOfArmsUrl]);
-        }
-        else {
-            setImageSources(armsimg, []);
+        setImageSources(armsimg, [coatOfArmsUrl]);
+        if (!coatOfArmsUrl) {
+          fetchCoatOfArms(clickedCountry).then(url => setImageSources(armsimg, [url]));
         }
       }
       datafunc();
@@ -466,6 +445,8 @@ function animation() {
   //console.log(window.getComputedStyle(dataform).zIndex);
   addname.innerHTML = "";
   displaydata();
+  infor2.forEach(info => info.innerText = "Loading...");
+  deepinfo2.forEach(info => info.innerText = "Loading...");
   dataform.classList.remove("delpage");
   dataform.classList.add("anim");
   slidebar(0);
