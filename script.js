@@ -48,24 +48,6 @@ let coatOfArmsCache = new Map();
 let populationCache = new Map();
 
 async function fetchCountryData(countryName) {
-  let encodedName = encodeURIComponent(countryName);
-  let restUrl = `https://restcountries.com/v3.1/name/${encodedName}`;
-  try {
-    let controller = new AbortController();
-    let timeout = setTimeout(() => controller.abort(), 3000);
-    let response = await fetch(restUrl, { signal: controller.signal });
-    clearTimeout(timeout);
-    if (response.ok) {
-      let data = await response.json();
-      if (Array.isArray(data) && data.length > 0) {
-        return data;
-      }
-    }
-  }
-  catch (error) {
-    console.warn(`Country data source failed: ${restUrl}`, error);
-  }
-
   if (!fallbackCountriesPromise) {
     fallbackCountriesPromise = fetch("https://raw.githubusercontent.com/mledoze/countries/master/countries.json")
       .then(response => {
