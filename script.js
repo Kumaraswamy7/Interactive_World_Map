@@ -45,6 +45,7 @@ let infor2 = document.querySelectorAll(".infor2");
 let deepinfo2 = document.querySelectorAll(".deepinfo2");
 let fallbackCountriesPromise;
 let coatOfArmsCache = new Map();
+let populationCache = new Map();
 
 async function fetchCountryData(countryName) {
   let encodedName = encodeURIComponent(countryName);
@@ -85,9 +86,35 @@ async function fetchCountryData(countryName) {
     country.flags = countryCode ? {
       png: `https://flagcdn.com/w320/${countryCode}.png`
     } : null;
+    country.capital = Array.isArray(country.capital) ? country.capital : [country.capital].filter(Boolean);
+    country.capitalInfo = country.latlng ? { latlng: country.latlng } : null;
     return [country];
   }
   throw new Error(`No country data is available for ${countryName}`);
+}
+
+async function fetchPopulation(countryCode) {
+  if (!countryCode) {
+    return "Not available";
+  }
+  if (populationCache.has(countryCode)) {
+    return populationCache.get(countryCode);
+  }
+  try {
+    let response = await fetch(`https://api.worldbank.org/v2/country/${countryCode}/indicator/SP.POP.TOTL?format=json`);
+    if (!response.ok) {
+      return "Not available";
+    }
+    let data = await response.json();
+    let latest = data[1]?.find(entry => entry.value !== null);
+    let population = latest?.value ?? "Not available";
+    populationCache.set(countryCode, population);
+    return population;
+  }
+  catch (error) {
+    console.warn(`Population source failed for ${countryCode}`, error);
+    return "Not available";
+  }
 }
 
 function setImageSources(image, sources) {
@@ -235,7 +262,7 @@ am4core.ready(function () {
           }
           else {
             //console.log(checkarr[i],data[0][checkarr[i]]);
-            basicdata.push("none");
+            basicdata.push("Not available");
           }
           // if(j===checkarr.length){
           //   getd();
@@ -299,7 +326,8 @@ am4core.ready(function () {
           }
         }
         historyload();
-        function historyload() {
+        async function historyload() {
+          let population = data[0].population ?? await fetchPopulation(data[0].cca3);
           histodata.push(data[0].idd?.root || "Not available");
           histodata.push(data[0].idd?.suffixes || "Not available");
           // let checkarr=["area","population","tld","landlocked","startOfWeek","borders","cca2","ccn3","cca3","cioc"];
@@ -314,16 +342,17 @@ am4core.ready(function () {
           let checkarr = ["area", "population", "tld", "landlocked", "startOfWeek", "borders", "cca2", "ccn3", "cca3", "cioc"];
           for (let i = 0; i < checkarr.length; i++) {
             // Explicitly check for undefined or null
-            if (data[0][checkarr[i]] !== undefined && data[0][checkarr[i]] !== null) {
-              histodata.push(data[0][checkarr[i]]);
+            if (checkarr[i] === "population" || (data[0][checkarr[i]] !== undefined && data[0][checkarr[i]] !== null)) {
+              histodata.push(checkarr[i] === "population" ? population : data[0][checkarr[i]]);
             } else {
               histodata.push("Not available");
             }
           }
           histodata.push(data[0].car?.signs || "Not available");
-          histodata.push(data[0].capitalInfo?.latlng || "Not available");
+          histodata.push(data[0].capitalInfo?.latlng || data[0].latlng || "Not available");
           histodata.push(data[0].postalCode?.format || "Not available");
           histodata.push(data[0].postalCode?.regex || "Not available");
+          historyadd();
           //   function getd(){
           // histodata.push(data[0].idd.root);
           // histodata.push(data[0].idd.suffixes);
