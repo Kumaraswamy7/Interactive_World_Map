@@ -487,24 +487,16 @@ function slidebar(n) {
     slides[i].classList.remove("active");
   }
   slides[n].classList.add("active");
-  let basicheight = window.getComputedStyle(basicinfopage).height;
-  let histoheight = window.getComputedStyle(historypage).height;
   if (n === 0) {
-    basicinfopage.style.zIndex = 10;
-    //basicinfopage.style.backgroundColor="#fff"
-    basicinfopage.classList.add("moveto1");
-    basicinfopage.classList.remove("moveto2");
-    //basicinfopage.style.backgroundColor="#7ae93b";
-    //historypage.style.zIndex=5;
-    historypage.style.zIndex = -2;
+    basicinfopage.style.transform = "translateX(0)";
+    historypage.style.transform = "translateX(100%)";
+    basicinfopage.style.zIndex = 2;
+    historypage.style.zIndex = 1;
   }
   else {
-
-    basicinfopage.style.zIndex = 10;
-    historypage.style.zIndex = -2;
-    //historypage.style.backgroundColor="blue";
-    basicinfopage.classList.remove("moveto1");
-    basicinfopage.classList.add("moveto2");
-    //historypage.style.backgroundColor="#7ae93b";
+    basicinfopage.style.transform = "translateX(-100%)";
+    historypage.style.transform = "translateX(0)";
+    basicinfopage.style.zIndex = 1;
+    historypage.style.zIndex = 2;
   }
 }

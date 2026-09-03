@@ -189,22 +189,30 @@ margin-left:1vh;
   border-bottom: 0.3vh solid blue;
 }
 .data{
-  
+  position: relative;
   padding: 1vh;
   width: 100%;
   height: 83.3vh;
-  /* background-color: rgba(0,255,0,0.6); */
+  overflow: hidden;
 }
-.BasicInfo{
-  width: 100%;
-}
+.BasicInfo,
 .History{
-  
-  position: relative;
-  width: 100%;
-  background-color: #fff;
-  top: -82vh;
+  position: absolute;
+  top: 0;
   left: 0;
+  width: 100%;
+  height: 100%;
+  overflow-y: auto;
+  background-color: #fff;
+  transition: transform 0.55s ease;
+}
+.BasicInfo {
+  transform: translateX(0);
+  z-index: 2;
+}
+.History {
+  transform: translateX(100%);
+  z-index: 1;
 }
 .moveto1{
   position: relative;
