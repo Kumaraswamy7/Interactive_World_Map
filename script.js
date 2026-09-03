@@ -46,8 +46,72 @@ let deepinfo2 = document.querySelectorAll(".deepinfo2");
 let fallbackCountriesPromise;
 let coatOfArmsCache = new Map();
 let populationCache = new Map();
+let notAvailableText = "Not available";
+
+function buildMapLinksFromLatLng(latlng) {
+  if (!Array.isArray(latlng) || latlng.length < 2) {
+    return {};
+  }
+  let [lat, lng] = latlng;
+  return {
+    googleMaps: `https://www.google.com/maps?q=${lat},${lng}`,
+    openStreetMaps: `https://www.openstreetmap.org/?mlat=${lat}&mlon=${lng}#map=5/${lat}/${lng}`
+  };
+}
+
+function normalizeCountry(country) {
+  let countryCode = country.cca2?.toLowerCase();
+  let latlng = Array.isArray(country.latlng) ? country.latlng : [];
+  let generatedMaps = buildMapLinksFromLatLng(latlng);
+  return {
+    ...country,
+    flags: {
+      svg: country.flags?.svg || (countryCode ? `https://flagcdn.com/${countryCode}.svg` : ""),
+      png: country.flags?.png || (countryCode ? `https://flagcdn.com/w320/${countryCode}.png` : "")
+    },
+    coatOfArms: {
+      svg: country.coatOfArms?.svg || "",
+      png: country.coatOfArms?.png || ""
+    },
+    capital: Array.isArray(country.capital) ? country.capital : [country.capital].filter(Boolean),
+    capitalInfo: country.capitalInfo?.latlng ? country.capitalInfo : (latlng.length ? { latlng } : null),
+    maps: {
+      googleMaps: country.maps?.googleMaps || generatedMaps.googleMaps || "",
+      openStreetMaps: country.maps?.openStreetMaps || generatedMaps.openStreetMaps || ""
+    },
+    currencies: country.currencies || {},
+    languages: country.languages || {},
+    demonyms: country.demonyms || {},
+    postalCode: country.postalCode || null
+  };
+}
+
+function getCountryNameMatches(country) {
+  return [
+    country.name?.common,
+    country.name?.official,
+    ...(Array.isArray(country.altSpellings) ? country.altSpellings : [])
+  ]
+    .filter(Boolean)
+    .map(value => value.toLowerCase());
+}
 
 async function fetchCountryData(countryName) {
+  let normalizedName = countryName.toLowerCase();
+  try {
+    let response = await fetch(`https://restcountries.com/v3.1/name/${encodeURIComponent(countryName)}`);
+    if (response.ok) {
+      let restCountries = await response.json();
+      let country = restCountries.find(item => getCountryNameMatches(item).includes(normalizedName)) || restCountries[0];
+      if (country) {
+        return [normalizeCountry(country)];
+      }
+    }
+  }
+  catch (error) {
+    console.warn(`Primary country source failed for ${countryName}`, error);
+  }
+
   if (!fallbackCountriesPromise) {
     fallbackCountriesPromise = fetch("https://raw.githubusercontent.com/mledoze/countries/master/countries.json")
       .then(response => {
@@ -58,19 +122,11 @@ async function fetchCountryData(countryName) {
       });
   }
   let allCountries = await fallbackCountriesPromise;
-  let normalizedName = countryName.toLowerCase();
   let country = allCountries.find(country => {
-    let names = [country.name?.common, country.name?.official];
-    return names.some(name => name?.toLowerCase() === normalizedName);
+    return getCountryNameMatches(country).includes(normalizedName);
   });
   if (country) {
-    let countryCode = country.cca2?.toLowerCase();
-    country.flags = countryCode ? {
-      png: `https://flagcdn.com/w320/${countryCode}.png`
-    } : null;
-    country.capital = Array.isArray(country.capital) ? country.capital : [country.capital].filter(Boolean);
-    country.capitalInfo = country.latlng ? { latlng: country.latlng } : null;
-    return [country];
+    return [normalizeCountry(country)];
   }
   throw new Error(`No country data is available for ${countryName}`);
 }
@@ -100,13 +156,26 @@ async function fetchPopulation(countryCode) {
 }
 
 function setImageSources(image, sources) {
-  let validSources = sources.filter(Boolean);
+  let validSources = sources.filter(source => typeof source === "string" && source.trim() !== "");
+  image.onerror = null;
+  if (!validSources.length) {
+    image.removeAttribute("src");
+    image.style.visibility = "hidden";
+    return;
+  }
+  image.style.visibility = "visible";
   let sourceIndex = 0;
   image.onerror = function () {
     sourceIndex += 1;
-    image.src = validSources[sourceIndex] || "";
+    if (validSources[sourceIndex]) {
+      image.src = validSources[sourceIndex];
+      return;
+    }
+    image.onerror = null;
+    image.removeAttribute("src");
+    image.style.visibility = "hidden";
   };
-  image.src = validSources[0] || "";
+  image.src = validSources[0];
 }
 
 async function fetchCoatOfArms(countryName) {
@@ -140,6 +209,91 @@ function showCountryError(countryName) {
   dataform.classList.remove("delpage");
   dataform.classList.add("anim");
   slidebar(0);
+}
+
+function collectDisplayValues(value) {
+  if (value === undefined || value === null) {
+    return [];
+  }
+  if (typeof value === "string") {
+    let trimmed = value.trim();
+    return trimmed ? [trimmed] : [];
+  }
+  if (typeof value === "number") {
+    return [String(value)];
+  }
+  if (typeof value === "boolean") {
+    return [value ? "Yes" : "No"];
+  }
+  if (Array.isArray(value)) {
+    return value.flatMap(item => collectDisplayValues(item));
+  }
+  if (typeof value === "object") {
+    return Object.values(value).flatMap(item => collectDisplayValues(item));
+  }
+  return [String(value)];
+}
+
+function formatValue(value) {
+  let values = collectDisplayValues(value);
+  return values.length ? values.join(", ") : notAvailableText;
+}
+
+function getCurrencyNames(currencies) {
+  if (!currencies || typeof currencies !== "object") {
+    return notAvailableText;
+  }
+  let names = Object.values(currencies).map(currency => currency?.name).filter(Boolean);
+  if (names.length) {
+    return names.join(", ");
+  }
+  return formatValue(Object.keys(currencies));
+}
+
+function getCurrencySymbols(currencies) {
+  if (!currencies || typeof currencies !== "object") {
+    return notAvailableText;
+  }
+  let symbols = Object.values(currencies).map(currency => currency?.symbol).filter(Boolean);
+  return symbols.length ? symbols.join(", ") : notAvailableText;
+}
+
+function getDemonymValue(demonyms, key) {
+  let demonym = demonyms?.[key];
+  if (!demonym) {
+    return notAvailableText;
+  }
+  let values = [demonym.m, demonym.f].filter(Boolean);
+  if (!values.length) {
+    return notAvailableText;
+  }
+  return values.join(" / ");
+}
+
+function getSafeUrl(url) {
+  if (!url) {
+    return "";
+  }
+  try {
+    let parsed = new URL(url);
+    if (parsed.protocol === "https:" || parsed.protocol === "http:") {
+      return parsed.href;
+    }
+  }
+  catch (error) {
+    return "";
+  }
+  return "";
+}
+
+function renderFieldValues(nodes, values) {
+  if (nodes.length !== values.length) {
+    console.warn(`Field count mismatch: expected ${nodes.length}, got ${values.length}`);
+  }
+  for (let i = 0; i < nodes.length; i++) {
+    nodes[i].innerHTML = "";
+    nodes[i].innerText = formatValue(values[i]);
+  }
 }
 
 am4core.ready(function () {
@@ -193,7 +347,7 @@ am4core.ready(function () {
       clickeddata = clickedCountry;
       animation();
 
-      async function datafunc(countryapi) {
+      async function datafunc() {
         let data;
         try {
           data = await fetchCountryData(clickedCountry);
@@ -203,209 +357,62 @@ am4core.ready(function () {
           showCountryError(clickedCountry);
           return;
         }
-        let flag = data[0].flags;
+        let country = data[0];
+        let flag = country.flags;
         setImageSources(flagimg, [flag?.svg, flag?.png]);
-        let arms = data[0].coatOfArms;
+
+        let basicValues = [
+          country.name?.official || country.name?.common || clickedCountry,
+          country.independent,
+          country.status,
+          country.altSpellings,
+          country.capital,
+          country.region,
+          country.subregion,
+          Object.values(country.languages || {}),
+          getCurrencyNames(country.currencies),
+          getCurrencySymbols(country.currencies),
+          country.timezones,
+          country.maps?.googleMaps || country.maps?.openStreetMaps,
+          country.latlng,
+          getDemonymValue(country.demonyms, "eng"),
+          getDemonymValue(country.demonyms, "fra")
+        ];
+        renderFieldValues(infor2, basicValues);
+
+        let mapUrl = getSafeUrl(country.maps?.googleMaps || country.maps?.openStreetMaps);
+        if (mapUrl && infor2[11]) {
+          let linkLabel = country.maps?.googleMaps ? "Google Maps" : "OpenStreetMap";
+          infor2[11].innerHTML = `<a href="${mapUrl}" target="_blank" rel="noopener noreferrer">${linkLabel}</a>`;
+        }
+
+        let population = country.population ?? await fetchPopulation(country.cca3);
+        let deepValues = [
+          country.idd?.root,
+          country.idd?.suffixes,
+          country.area,
+          population,
+          country.tld,
+          country.landlocked,
+          country.startOfWeek,
+          country.borders,
+          country.cca2,
+          country.ccn3,
+          country.cca3,
+          country.cioc,
+          country.car?.signs,
+          country.capitalInfo?.latlng || country.latlng,
+          country.postalCode?.format,
+          country.postalCode?.regex
+        ];
+        renderFieldValues(deepinfo2, deepValues);
+
+        let arms = country.coatOfArms;
         let coatOfArmsUrl = arms?.svg || arms?.png;
-        let basicdata = [];
-        let histodata = [];
-        console.log(data);
-        basicdata.push(data[0].name?.official || data[0].name?.common || clickedCountry)
-        let checkarr = ["independent", "status", "altSpellings", "capital", "region", "subregion", "languages", "currencies", "timezones", "maps", "latlng", "demonyms"];
-        for (let i = 0; i < checkarr.length; i++) {
-          let j = 0;
-          if (data[0][checkarr[i]]) {
-            if (i === 6 || i === 9) {
-              basicdata.push(Object.values(data[0][checkarr[i]]));
-            }
-            else {
-              if (i === 7 || i === 11) {
-                if (i === 7) {
-                  let madifi = Object.values(data[0][checkarr[i]]);
-                  basicdata.push(Object.values(madifi[0]));
-                }
-                else {
-                  let demon = Object.values(data[0][checkarr[i]]);
-                  if (demon.length == 2) {
-                    basicdata.push(Object.values(demon[0]));
-                    basicdata.push(Object.values(demon[1]));
-                  }
-                  else {
-                    basicdata.push(Object.values(demon[0]));
-                  }
-                }
-              }
-              else {
-                basicdata.push(data[0][checkarr[i]]);
-                //console.log(basicdata);
-                j += 1;
-              }
-            }
-          }
-          else {
-            //console.log(checkarr[i],data[0][checkarr[i]]);
-            basicdata.push("Not available");
-          }
-          // if(j===checkarr.length){
-          //   getd();
-          // }
-        }
-        basicaddtopage();
-        function basicaddtopage() {
-          let i2 = 0;
-          for (let i = 0; i <= basicdata.length; i++) {
-            if (i === 8) {
-              infor2[9].innerHTML = "";
-            }
-            infor2[i].innerHTML = "";
-            if (Array.isArray(basicdata[i2])) {
-              for (j = 0; j < basicdata[i2].length; j++) {
-                // infor2[i].innerText+= basicdata[i][j];
-                if (i === 8) {
-                  let k = i;
-                  abc();
-                  function abc() {
-                    let textNode = document.createTextNode(basicdata[k][j]);
-                    infor2[i].appendChild(textNode);
-                    j += 1;
-                  }
-                  if (i === 8) {
-                    i += 1;
-                    abc();
-                  }
-                }
-                else {
-                  if (i === 10) {
-                    i2 = 9;
-                    let textNode = document.createTextNode(basicdata[i2][j]);
-                    infor2[i].appendChild(textNode);
-                    let lineBreak = document.createElement('br'); // Create a line break
-                    infor2[i].appendChild(lineBreak); // Append the line break to the container
-                  }
-                  else {
-                    let textNode = document.createTextNode(basicdata[i2][j]);
-                    infor2[i].appendChild(textNode);
-                    let lineBreak = document.createElement('br'); // Create a line break
-                    infor2[i].appendChild(lineBreak);
-                  }
-                }
-              }
-            }
-            else {
-              if (i === 8) {
-                infor2[i].innerText = basicdata[i];
-                //console.log(infor2[i].innerText);
-                i += 1;
-              }
-              else {
-                infor2[i].innerText = basicdata[i2];
-                //console.log(infor2[i].innerText)
-                //console.log(basicdata[i2]);
-              }
-            }
-            //console.log(i2,i);
-            i2 += 1;
-          }
-        }
-        historyload();
-        async function historyload() {
-          let population = data[0].population ?? await fetchPopulation(data[0].cca3);
-          histodata.push(data[0].idd?.root || "Not available");
-          histodata.push(data[0].idd?.suffixes || "Not available");
-          // let checkarr=["area","population","tld","landlocked","startOfWeek","borders","cca2","ccn3","cca3","cioc"];
-          // for(let i=0;i<checkarr.length;i++){
-          //   if(data[0][checkarr[i]]){
-          //         histodata.push(data[0][checkarr[i]]);
-          //   }
-          //   else{
-          //     histodata.push("none");
-          //   }
-          // }
-          let checkarr = ["area", "population", "tld", "landlocked", "startOfWeek", "borders", "cca2", "ccn3", "cca3", "cioc"];
-          for (let i = 0; i < checkarr.length; i++) {
-            // Explicitly check for undefined or null
-            if (checkarr[i] === "population" || (data[0][checkarr[i]] !== undefined && data[0][checkarr[i]] !== null)) {
-              histodata.push(checkarr[i] === "population" ? population : data[0][checkarr[i]]);
-            } else {
-              histodata.push("Not available");
-            }
-          }
-          histodata.push(data[0].car?.signs || "Not available");
-          histodata.push(data[0].capitalInfo?.latlng || data[0].latlng || "Not available");
-          histodata.push(data[0].postalCode?.format || "Not available");
-          histodata.push(data[0].postalCode?.regex || "Not available");
-          historyadd();
-          //   function getd(){
-          // histodata.push(data[0].idd.root);
-          // histodata.push(data[0].idd.suffixes);
-          // histodata.push(data[0].area);
-          // histodata.push(data[0].population);
-          // histodata.push(data[0].tld);
-          // histodata.push(data[0].landlocked);
-          // histodata.push(data[0].startOfWeek);
-          // histodata.push(data[0].borders);
-          // histodata.push(data[0].cca2);
-          // histodata.push(data[0].ccn3);
-          // histodata.push(data[0].cca3);
-          // histodata.push(data[0].cioc);
-          // histodata.push(data[0].car.signs);
-          // histodata.push(data[0].capitalInfo.latlng);
-          // histodata.push(data[0].postalCode.format);
-          // histodata.push(data[0].postalCode.regex);
-
-
-          // console.log(histodata);
-          //   }
-        }
-        historyadd();
-        function historyadd() {
-
-          for (let i = 0; i < histodata.length; i++) {
-            if (!deepinfo2[i]) {
-              console.warn(`Element deepinfo2[${i}] does not exist.`);
-              continue; // Skip this iteration
-            }
-            deepinfo2[i].innerHTML = "";
-            if (Array.isArray(histodata[i])) {
-              for (let j = 0; j < histodata[i].length; j++) {
-                // infor2[i].innerText+= basicdata[i][j];
-                let textNode = document.createTextNode(String(histodata[i][j]));
-                deepinfo2[i].appendChild(textNode);
-                let lineBreak = document.createElement('br'); // Create a line break
-                deepinfo2[i].appendChild(lineBreak); // Append the line break to the container
-              }
-            }
-            else {
-              deepinfo2[i].innerText = String(histodata[i] ?? "Not available");
-              //console.log(infor2[i].innerText)
-              //console.log(basicdata[i2]);
-            }
-          }
-        }
-
-
-        // function getd(){
-        // let basicdata=[data[0].name.official];
-        // basicdata.push(data[0].independent);
-        // basicdata.push(data[0].status);
-        // basicdata.push(data[0].altSpellings);
-        // basicdata.push(data[0].capital);
-        // basicdata.push(data[0].region);
-        // basicdata.push(data[0].subregion);
-        // basicdata.push(Object.values(data[0].languages));
-        // let curr=Object.values(data[0].currencies);
-        // basicdata.push(Object.values(curr[0]));
-        // basicdata.push(data[0].timezones);
-        // basicdata.push(Object.values(data[0].maps));
-        // basicdata.push(data[0].latlng);
-        // let demony=Object.values(data[0].demonyms)
-        // basicdata.push(Object.values(demony[0]));
-        // basicdata.push(Object.values(demony[1]));
-        // console.log(basicdata);
-        // }
         setImageSources(armsimg, [coatOfArmsUrl]);
         if (!coatOfArmsUrl) {
-          fetchCoatOfArms(clickedCountry).then(url => setImageSources(armsimg, [url]));
+          let fallbackCoatUrl = await fetchCoatOfArms(clickedCountry);
+          setImageSources(armsimg, [fallbackCoatUrl]);
         }
       }
       datafunc();
