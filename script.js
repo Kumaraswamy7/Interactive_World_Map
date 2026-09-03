@@ -170,6 +170,9 @@ am4core.ready(function () {
       // // Update height on window resize
       //   window.addEventListener('resize', updateHeight);
 
+      clickeddata = clickedCountry;
+      animation();
+
       async function datafunc(countryapi) {
         let data;
         try {
@@ -414,8 +417,6 @@ am4core.ready(function () {
         else {
             setImageSources(armsimg, []);
         }
-        clickeddata = clickedCountry;
-        animation();
       }
       datafunc();
       alertShown = true;
